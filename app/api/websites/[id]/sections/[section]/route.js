@@ -57,10 +57,15 @@ export async function PUT(request, { params }) {
     }
 
     const websiteData = websiteSnapshot.data();
-    const updatedAllData = { ...websiteData.allData } || {};
+    console.log("Current website data:", websiteData);
+    
+    const updatedAllData = { ...(websiteData.allData || {}) };
+    console.log("Initial allData:", updatedAllData);
     
     // Handle nested section paths (e.g., "homePage.sectionOne")
     const sectionPath = section.split(".");
+    console.log("Section path:", sectionPath);
+    
     let current = updatedAllData;
     
     // Navigate to the parent of the target section
@@ -69,18 +74,22 @@ export async function PUT(request, { params }) {
         current[sectionPath[i]] = {};
       }
       current = current[sectionPath[i]];
+      console.log(`Navigated to level ${i + 1}:`, current);
     }
     
     // Set the final section data
     const finalKey = sectionPath[sectionPath.length - 1];
+    console.log("Setting final key:", finalKey, "with data:", data);
     current[finalKey] = data;
 
+    console.log("Final updated allData:", JSON.stringify(updatedAllData, null, 2));
     // Update the document
     await updateDoc(websiteDoc, {
       allData: updatedAllData,
       lastUpdated: new Date(),
     });
 
+    console.log("Document updated successfully");
     return NextResponse.json({
       success: true,
       section: section,
@@ -88,6 +97,7 @@ export async function PUT(request, { params }) {
     });
   } catch (error) {
     console.error("Error updating section:", error);
+    console.error("Error stack:", error.stack);
     return NextResponse.json(
       { error: "Failed to update section" },
       { status: 500 }
