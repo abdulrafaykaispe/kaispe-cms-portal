@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase-admin/firestore";
 import { dbAdmin } from "@/app/lib/firebaseAdmin";
 
 export async function GET(request, { params }) {
   try {
+    if (!dbAdmin) {
+      return NextResponse.json({ error: "Database connection failed" }, { status: 500 });
+    }
+    
     const { id, section } = params;
-    const websiteDoc = doc(dbAdmin, "websites", id);
-    const websiteSnapshot = await getDoc(websiteDoc);
+    const websiteDoc = dbAdmin.collection("websites").doc(id);
+    const websiteSnapshot = await websiteDoc.get();
 
-    if (!websiteSnapshot.exists()) {
+    if (!websiteSnapshot.exists) {
       return NextResponse.json({ error: "Website not found" }, { status: 404 });
     }
 
@@ -44,15 +48,19 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
+    if (!dbAdmin) {
+      return NextResponse.json({ error: "Database connection failed" }, { status: 500 });
+    }
+    
     const { id, section } = params;
     const { data } = await request.json();
 
     console.log("Updating section:", { id, section, data });
 
-    const websiteDoc = doc(dbAdmin, "websites", id);
-    const websiteSnapshot = await getDoc(websiteDoc);
+    const websiteDoc = dbAdmin.collection("websites").doc(id);
+    const websiteSnapshot = await websiteDoc.get();
 
-    if (!websiteSnapshot.exists()) {
+    if (!websiteSnapshot.exists) {
       return NextResponse.json({ error: "Website not found" }, { status: 404 });
     }
 
@@ -84,7 +92,7 @@ export async function PUT(request, { params }) {
 
     console.log("Final updated allData:", JSON.stringify(updatedAllData, null, 2));
     // Update the document
-    await updateDoc(websiteDoc, {
+    await websiteDoc.update({
       allData: updatedAllData,
       lastUpdated: new Date(),
     });
@@ -107,13 +115,17 @@ export async function PUT(request, { params }) {
 
 export async function POST(request, { params }) {
   try {
+    if (!dbAdmin) {
+      return NextResponse.json({ error: "Database connection failed" }, { status: 500 });
+    }
+    
     const { id, section } = params;
     const { data } = await request.json();
 
-    const websiteDoc = doc(dbAdmin, "websites", id);
-    const websiteSnapshot = await getDoc(websiteDoc);
+    const websiteDoc = dbAdmin.collection("websites").doc(id);
+    const websiteSnapshot = await websiteDoc.get();
 
-    if (!websiteSnapshot.exists()) {
+    if (!websiteSnapshot.exists) {
       return NextResponse.json({ error: "Website not found" }, { status: 404 });
     }
 
@@ -124,7 +136,7 @@ export async function POST(request, { params }) {
       lastUpdated: new Date(),
     };
 
-    await updateDoc(websiteDoc, updateData);
+    await websiteDoc.update(updateData);
 
     return NextResponse.json({
       success: true,
@@ -142,12 +154,16 @@ export async function POST(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
+    if (!dbAdmin) {
+      return NextResponse.json({ error: "Database connection failed" }, { status: 500 });
+    }
+    
     const { id, section } = params;
 
-    const websiteDoc = doc(dbAdmin, "websites", id);
-    const websiteSnapshot = await getDoc(websiteDoc);
+    const websiteDoc = dbAdmin.collection("websites").doc(id);
+    const websiteSnapshot = await websiteDoc.get();
 
-    if (!websiteSnapshot.exists()) {
+    if (!websiteSnapshot.exists) {
       return NextResponse.json({ error: "Website not found" }, { status: 404 });
     }
 
@@ -180,7 +196,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: "Section not found" }, { status: 404 });
     }
 
-    await updateDoc(websiteDoc, {
+    await websiteDoc.update({
       allData: updatedAllData,
       lastUpdated: new Date(),
     });

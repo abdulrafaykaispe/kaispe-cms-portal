@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase-admin/firestore";
 import { dbAdmin } from "@/app/lib/firebaseAdmin";
 
 export async function GET(request, { params }) {
   try {
+    if (!dbAdmin) {
+      console.error("Firebase Admin not initialized");
+      return NextResponse.json({ error: "Database connection failed" }, { status: 500 });
+    }
+    
     console.log("Fetching website with ID:", params.id);
     
     const { id } = params;
@@ -14,14 +19,14 @@ export async function GET(request, { params }) {
     }
     
     console.log("Creating document reference for:", id);
-    const websiteDoc = doc(dbAdmin, "websites", id);
+    const websiteDoc = dbAdmin.collection("websites").doc(id);
     
     console.log("Fetching document...");
-    const websiteSnapshot = await getDoc(websiteDoc);
+    const websiteSnapshot = await websiteDoc.get();
     
     console.log("Document exists:", websiteSnapshot.exists());
 
-    if (!websiteSnapshot.exists()) {
+    if (!websiteSnapshot.exists) {
       console.log("Website not found for ID:", id);
       return NextResponse.json({ error: "Website not found" }, { status: 404 });
     }

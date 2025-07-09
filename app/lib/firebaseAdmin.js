@@ -46,7 +46,8 @@ try {
   
 } catch (error) {
   console.error("Critical error initializing Firebase Admin:", error);
-  throw error;
+  // Don't throw here, let the API endpoints handle the error
+  dbAdmin = null;
 }
 
 export { dbAdmin };
