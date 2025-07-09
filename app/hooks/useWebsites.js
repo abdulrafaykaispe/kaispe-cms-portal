@@ -13,7 +13,7 @@ export function useWebsites() {
         const res = await fetch("/api/websites");
         if (!res.ok) throw new Error("Failed to fetch");
         const data = await res.json();
-        setWebsites(data.websites || data);
+        setWebsites(data);
         setError(null);
       } catch (err) {
         setError(err.message);
@@ -190,7 +190,7 @@ export function useWebsites() {
       const res = await fetch("/api/websites");
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
-      setWebsites(data.websites || data);
+      setWebsites(data);
       setError(null);
     } catch (err) {
       setError(err.message);
