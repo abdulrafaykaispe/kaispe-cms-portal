@@ -20,17 +20,24 @@ import {
 } from "lucide-react";
 import { useWebsites } from "@/app/hooks/useWebsites";
 import toast from "react-hot-toast";
+import Spinner from "@/app/components/Spinner";
 
 export default function WebsiteDetailContent() {
   const { id } = useParams();
   const router = useRouter();
-  const { websites, updateWebsiteSection } = useWebsites();
+  const { websites, loading, updateWebsiteSection } = useWebsites();
   const [editingSection, setEditingSection] = useState(null);
   const [editingData, setEditingData] = useState({});
   const [expandedPages, setExpandedPages] = useState({});
 
   const website = websites.find((w) => w.id === id);
 
+  // Show loading spinner while data is being fetched
+  if (loading) {
+    return <Spinner />;
+  }
+
+  // Show not found only after loading is complete and website is not found
   if (!website) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
