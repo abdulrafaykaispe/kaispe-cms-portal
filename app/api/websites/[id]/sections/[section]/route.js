@@ -47,6 +47,8 @@ export async function PUT(request, { params }) {
     const { id, section } = params;
     const { data } = await request.json();
 
+    console.log("Updating section:", { id, section, data });
+
     const websiteDoc = doc(dbAdmin, "websites", id);
     const websiteSnapshot = await getDoc(websiteDoc);
 
@@ -54,14 +56,30 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: "Website not found" }, { status: 404 });
     }
 
-    // Update the nested section using dot notation within allData
-    const updatePath = `allData.${section}`;
-    const updateData = {
-      [updatePath]: data,
-      lastUpdated: new Date(),
-    };
+    const websiteData = websiteSnapshot.data();
+    const updatedAllData = { ...websiteData.allData } || {};
+    
+    // Handle nested section paths (e.g., "homePage.sectionOne")
+    const sectionPath = section.split(".");
+    let current = updatedAllData;
+    
+    // Navigate to the parent of the target section
+    for (let i = 0; i < sectionPath.length - 1; i++) {
+      if (!current[sectionPath[i]]) {
+        current[sectionPath[i]] = {};
+      }
+      current = current[sectionPath[i]];
+    }
+    
+    // Set the final section data
+    const finalKey = sectionPath[sectionPath.length - 1];
+    current[finalKey] = data;
 
-    await updateDoc(websiteDoc, updateData);
+    // Update the document
+    await updateDoc(websiteDoc, {
+      allData: updatedAllData,
+      lastUpdated: new Date(),
+    });
 
     return NextResponse.json({
       success: true,
