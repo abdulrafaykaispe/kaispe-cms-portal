@@ -1,15 +1,6 @@
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { Toaster } from "react-hot-toast";
+import ProtectedRoute from "./hooks/protectedRoute";
 
 export const metadata = {
   title: "Create Next App",
@@ -19,10 +10,21 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className={`antialiased`} suppressHydrationWarning>
+        <ProtectedRoute>
+          {children}
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 3000,
+              style: {
+                background: "#fff",
+                color: "#333",
+                border: "1px solid #e5e7eb",
+              },
+            }}
+          />
+        </ProtectedRoute>
       </body>
     </html>
   );
