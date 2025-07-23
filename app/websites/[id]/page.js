@@ -389,7 +389,7 @@ export default function WebsiteDetailContent() {
                 No pages found
               </h3>
               <p className="text-gray-600">
-                This website doesn't have any pages yet
+                This website doesn&apos;t have any pages yet
               </p>
             </div>
           ) : (
