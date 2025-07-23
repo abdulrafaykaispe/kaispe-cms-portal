@@ -15,7 +15,7 @@ import {
   MoreVertical,
 } from "lucide-react";
 import useAuth from "../hooks/useAuth";
-import useWebsites from "../hooks/useWebsites";
+import { useWebsites } from "../hooks/useWebsites";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
@@ -207,7 +207,7 @@ export default function Dashboard() {
               transition={{ delay: index * 0.1 }}
               whileHover={{ y: -4 }}
               className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-white/20 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
-              onClick={() => router.push(`/website/${website.id}`)}
+              onClick={() => router.push(`/websites/${website.id}`)}
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
@@ -262,7 +262,7 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* {filteredWebsites.length === 0 && (
+        {filteredWebsites.length === 0 && (
           <div className="text-center py-12">
             <Globe className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-800 mb-2">
@@ -272,7 +272,7 @@ export default function Dashboard() {
               Try adjusting your search or add a new website
             </p>
           </div>
-        )} */}
+        )}
       </main>
     </div>
   );

@@ -13,7 +13,7 @@ export function useWebsites() {
         const res = await fetch("/api/websites");
         if (!res.ok) throw new Error("Failed to fetch");
         const data = await res.json();
-        setWebsites(data.websites || data);
+        setWebsites(data);
         setError(null);
       } catch (err) {
         setError(err.message);
@@ -51,13 +51,10 @@ export function useWebsites() {
           if (website.id === websiteId) {
             const updatedWebsite = { ...website };
 
-            // Handle nested path updates within allData
+            // Handle nested path updates
             const pathParts = sectionPath.split(".");
 
-            // Ensure allData exists
-            if (!updatedWebsite.allData) updatedWebsite.allData = {};
-
-            let current = updatedWebsite.allData;
+            let current = updatedWebsite;
 
             // Navigate to the parent of the target property
             for (let i = 0; i < pathParts.length - 1; i++) {
@@ -111,8 +108,7 @@ export function useWebsites() {
 
             const pathParts = sectionPath.split(".");
 
-            if (!updatedWebsite.allData) updatedWebsite.allData = {};
-            let current = updatedWebsite.allData;
+            let current = updatedWebsite;
 
             for (let i = 0; i < pathParts.length - 1; i++) {
               if (!current[pathParts[i]]) current[pathParts[i]] = {};
@@ -157,7 +153,7 @@ export function useWebsites() {
             const updatedWebsite = { ...website };
 
             const pathParts = sectionPath.split(".");
-            let current = updatedWebsite.allData;
+            let current = updatedWebsite;
 
             if (!current) return website;
 
@@ -190,7 +186,7 @@ export function useWebsites() {
       const res = await fetch("/api/websites");
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
-      setWebsites(data.websites || data);
+      setWebsites(data);
       setError(null);
     } catch (err) {
       setError(err.message);

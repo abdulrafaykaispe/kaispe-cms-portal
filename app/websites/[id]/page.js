@@ -14,19 +14,30 @@ import {
   Eye,
   Activity,
   ExternalLink,
+  ChevronDown,
+  ChevronRight,
+  FileText,
 } from "lucide-react";
 import { useWebsites } from "@/app/hooks/useWebsites";
 import toast from "react-hot-toast";
+import Spinner from "@/app/components/Spinner";
 
 export default function WebsiteDetailContent() {
   const { id } = useParams();
   const router = useRouter();
-  const { websites, updateWebsiteSection } = useWebsites();
+  const { websites, loading, updateWebsiteSection } = useWebsites();
   const [editingSection, setEditingSection] = useState(null);
   const [editingData, setEditingData] = useState({});
+  const [expandedPages, setExpandedPages] = useState({});
 
   const website = websites.find((w) => w.id === id);
 
+  // Show loading spinner while data is being fetched
+  if (loading) {
+    return <Spinner />;
+  }
+
+  // Show not found only after loading is complete and website is not found
   if (!website) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
@@ -78,6 +89,13 @@ export default function WebsiteDetailContent() {
     setEditingData((prev) => ({
       ...prev,
       [key]: value,
+    }));
+  };
+
+  const togglePageExpansion = (pageName) => {
+    setExpandedPages((prev) => ({
+      ...prev,
+      [pageName]: !prev[pageName],
     }));
   };
 
@@ -193,36 +211,54 @@ export default function WebsiteDetailContent() {
     );
   };
 
-  const flattenSections = (data, prefix = "") => {
-    const sections = [];
+  // Group sections by page
+  const groupSectionsByPage = (websiteData) => {
+    const pages = {};
 
-    if (!data || typeof data !== "object") return sections;
+    if (!websiteData || typeof websiteData !== "object") return pages;
 
-    Object.entries(data).forEach(([key, value]) => {
-      const currentPath = prefix ? `${prefix}.${key}` : key;
+    // Filter out non-page data (id, domain, etc.)
+    const excludeKeys = [
+      "id",
+      "domain",
+      "status",
+      "lastUpdated",
+      "navigationBar",
+      "footer",
+    ];
 
-      if (value && typeof value === "object" && !Array.isArray(value)) {
-        // Check if this object has nested sections or if it's a data object
-        const hasNestedSections = Object.values(value).some(
-          (v) => v && typeof v === "object" && !Array.isArray(v)
-        );
-
-        if (hasNestedSections) {
-          sections.push(...flattenSections(value, currentPath));
-        } else {
-          sections.push({
-            path: currentPath,
-            name: key,
-            data: value,
-          });
-        }
+    Object.entries(websiteData).forEach(([pageKey, pageValue]) => {
+      if (
+        pageValue &&
+        typeof pageValue === "object" &&
+        !Array.isArray(pageValue) &&
+        !excludeKeys.includes(pageKey)
+      ) {
+        pages[pageKey] = {
+          name: pageKey
+            .replace(/([A-Z])/g, " $1")
+            .replace(/page/gi, " Page")
+            .trim(),
+          sections: Object.entries(pageValue).map(
+            ([sectionKey, sectionValue]) => ({
+              key: sectionKey,
+              name: sectionKey.replace(/([A-Z])/g, " $1").trim(),
+              path: `${pageKey}.${sectionKey}`,
+              data: sectionValue,
+            })
+          ),
+        };
       }
     });
 
-    return sections;
+    return pages;
   };
 
-  const allSections = flattenSections(website.allData || {});
+  const pageGroups = groupSectionsByPage(website);
+  const totalSections = Object.values(pageGroups).reduce(
+    (total, page) => total + page.sections.length,
+    0
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -284,13 +320,13 @@ export default function WebsiteDetailContent() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Sections</p>
+                <p className="text-sm text-gray-600">Total Pages</p>
                 <p className="text-2xl font-bold text-gray-800">
-                  {allSections.length}
+                  {Object.keys(pageGroups).length}
                 </p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Settings className="w-6 h-6 text-blue-600" />
+                <FileText className="w-6 h-6 text-blue-600" />
               </div>
             </div>
           </motion.div>
@@ -303,15 +339,13 @@ export default function WebsiteDetailContent() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Last Updated</p>
+                <p className="text-sm text-gray-600">Total Sections</p>
                 <p className="text-2xl font-bold text-gray-800">
-                  {new Date(
-                    website.lastUpdated?.seconds * 1000 || Date.now()
-                  ).toLocaleDateString()}
+                  {totalSections}
                 </p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <Activity className="w-6 h-6 text-green-600" />
+                <Settings className="w-6 h-6 text-green-600" />
               </div>
             </div>
           </motion.div>
@@ -324,89 +358,153 @@ export default function WebsiteDetailContent() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Status</p>
-                <p className="text-2xl font-bold text-gray-800">Active</p>
+                <p className="text-sm text-gray-600">Last Updated</p>
+                <p className="text-2xl font-bold text-gray-800">
+                  {new Date(
+                    website.lastUpdated?.seconds * 1000 || Date.now()
+                  ).toLocaleDateString()}
+                </p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Globe className="w-6 h-6 text-purple-600" />
+                <Activity className="w-6 h-6 text-purple-600" />
               </div>
             </div>
           </motion.div>
         </div>
 
-        {/* Sections */}
+        {/* Pages */}
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-800">
-              Content Sections
-            </h2>
+            <h2 className="text-2xl font-bold text-gray-800">Website Pages</h2>
             <button className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200">
               <Plus className="w-4 h-4" />
-              <span>Add Section</span>
+              <span>Add Page</span>
             </button>
           </div>
 
-          {allSections.length === 0 ? (
+          {Object.keys(pageGroups).length === 0 ? (
             <div className="text-center py-12">
-              <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                No sections found
+                No pages found
               </h3>
               <p className="text-gray-600">
-                This website doesn't have any content sections yet
+                This website doesn't have any pages yet
               </p>
             </div>
           ) : (
-            allSections.map((section, index) => (
+            Object.entries(pageGroups).map(([pageKey, page], pageIndex) => (
               <motion.div
-                key={section.path}
+                key={pageKey}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-white/20 shadow-sm"
+                transition={{ delay: pageIndex * 0.1 }}
+                className="bg-white/80 backdrop-blur-sm rounded-xl border border-white/20 shadow-sm overflow-hidden"
               >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-800 capitalize">
-                    {section.path
-                      .replace(/\./g, " → ")
-                      .replace(/([A-Z])/g, " $1")
-                      .trim()}
-                  </h3>
-                  <div className="flex items-center space-x-2">
-                    {editingSection === section.path ? (
-                      <>
-                        <button
-                          onClick={handleSaveSection}
-                          className="flex items-center space-x-1 px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                        >
-                          <Save className="w-4 h-4" />
-                          <span>Save</span>
-                        </button>
-                        <button
-                          onClick={handleCancelEdit}
-                          className="flex items-center space-x-1 px-3 py-1 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                          <span>Cancel</span>
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        onClick={() =>
-                          handleEditSection(section.path, section.data)
-                        }
-                        className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                        <span>Edit</span>
-                      </button>
-                    )}
+                {/* Page Header */}
+                <div
+                  className="p-6 cursor-pointer hover:bg-gray-50/50 transition-colors"
+                  onClick={() => togglePageExpansion(pageKey)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-800 capitalize">
+                          {page.name}
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          {page.sections.length} section
+                          {page.sections.length !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                        {page.sections.length} sections
+                      </span>
+                      {expandedPages[pageKey] ? (
+                        <ChevronDown className="w-5 h-5 text-gray-400" />
+                      ) : (
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {editingSection === section.path
-                  ? renderSectionContent(section.path, editingData)
-                  : renderSectionContent(section.path, section.data)}
+                {/* Page Sections */}
+                {expandedPages[pageKey] && (
+                  <div className="border-t border-gray-200/50">
+                    {page.sections.length === 0 ? (
+                      <div className="p-6 text-center text-gray-500">
+                        <Settings className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                        <p>No sections in this page</p>
+                        <button className="mt-2 text-blue-600 hover:text-blue-800 transition-colors">
+                          Add section
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-200/50">
+                        {page.sections.map((section, sectionIndex) => (
+                          <div key={section.key} className="p-6">
+                            <div className="flex items-center justify-between mb-4">
+                              <h4 className="text-md font-medium text-gray-800 capitalize">
+                                {section.name}
+                              </h4>
+                              <div className="flex items-center space-x-2">
+                                {editingSection === section.path ? (
+                                  <>
+                                    <button
+                                      onClick={handleSaveSection}
+                                      className="flex items-center space-x-1 px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                                    >
+                                      <Save className="w-3 h-3" />
+                                      <span>Save</span>
+                                    </button>
+                                    <button
+                                      onClick={handleCancelEdit}
+                                      className="flex items-center space-x-1 px-3 py-1 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                                    >
+                                      <X className="w-3 h-3" />
+                                      <span>Cancel</span>
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    onClick={() =>
+                                      handleEditSection(
+                                        section.path,
+                                        section.data
+                                      )
+                                    }
+                                    className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                                  >
+                                    <Edit3 className="w-3 h-3" />
+                                    <span>Edit</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="bg-gray-50/50 rounded-lg p-4">
+                              {editingSection === section.path
+                                ? renderSectionContent(
+                                    section.path,
+                                    editingData
+                                  )
+                                : renderSectionContent(
+                                    section.path,
+                                    section.data
+                                  )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </motion.div>
             ))
           )}

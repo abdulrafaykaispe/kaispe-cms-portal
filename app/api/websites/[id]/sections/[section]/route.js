@@ -1,14 +1,21 @@
 import { NextResponse } from "next/server";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase-admin/firestore";
 import { dbAdmin } from "@/app/lib/firebaseAdmin";
 
 export async function GET(request, { params }) {
   try {
-    const { id, section } = params;
-    const websiteDoc = doc(dbAdmin, "websites", id);
-    const websiteSnapshot = await getDoc(websiteDoc);
+    if (!dbAdmin) {
+      return NextResponse.json(
+        { error: "Database connection failed" },
+        { status: 500 }
+      );
+    }
 
-    if (!websiteSnapshot.exists()) {
+    const { id, section } = params;
+    const websiteDoc = dbAdmin.collection("websites").doc(id);
+    const websiteSnapshot = await websiteDoc.get();
+
+    if (!websiteSnapshot.exists) {
       return NextResponse.json({ error: "Website not found" }, { status: 404 });
     }
 
@@ -16,7 +23,7 @@ export async function GET(request, { params }) {
 
     // Handle nested section paths (e.g., "homePage.sectionOne")
     const sectionPath = section.split(".");
-    let sectionData = websiteData.allData;
+    let sectionData = websiteData;
 
     for (const path of sectionPath) {
       if (sectionData && sectionData[path]) {
@@ -44,25 +51,56 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
+    if (!dbAdmin) {
+      return NextResponse.json(
+        { error: "Database connection failed" },
+        { status: 500 }
+      );
+    }
+
     const { id, section } = params;
     const { data } = await request.json();
 
-    const websiteDoc = doc(dbAdmin, "websites", id);
-    const websiteSnapshot = await getDoc(websiteDoc);
+    console.log("Updating section:", { id, section, data });
 
-    if (!websiteSnapshot.exists()) {
+    const websiteDoc = dbAdmin.collection("websites").doc(id);
+    const websiteSnapshot = await websiteDoc.get();
+
+    if (!websiteSnapshot.exists) {
       return NextResponse.json({ error: "Website not found" }, { status: 404 });
     }
 
-    // Update the nested section using dot notation within allData
-    const updatePath = `allData.${section}`;
-    const updateData = {
-      [updatePath]: data,
-      lastUpdated: new Date(),
-    };
+    const websiteData = websiteSnapshot.data();
+    console.log("Current website data:", websiteData);
 
-    await updateDoc(websiteDoc, updateData);
+    const updatedData = { ...websiteData };
+    console.log("Initial data:", updatedData);
 
+    // Handle nested section paths (e.g., "homePage.sectionOne")
+    const sectionPath = section.split(".");
+    console.log("Section path:", sectionPath);
+
+    let current = updatedData;
+
+    // Navigate to the parent of the target section
+    for (let i = 0; i < sectionPath.length - 1; i++) {
+      if (!current[sectionPath[i]]) {
+        current[sectionPath[i]] = {};
+      }
+      current = current[sectionPath[i]];
+      console.log(`Navigated to level ${i + 1}:`, current);
+    }
+
+    // Set the final section data
+    const finalKey = sectionPath[sectionPath.length - 1];
+    console.log("Setting final key:", finalKey, "with data:", data);
+    current[finalKey] = data;
+
+    console.log("Final updated data:", JSON.stringify(updatedData, null, 2));
+    // Update the document
+    await websiteDoc.update(updatedData);
+
+    console.log("Document updated successfully");
     return NextResponse.json({
       success: true,
       section: section,
@@ -70,6 +108,7 @@ export async function PUT(request, { params }) {
     });
   } catch (error) {
     console.error("Error updating section:", error);
+    console.error("Error stack:", error.stack);
     return NextResponse.json(
       { error: "Failed to update section" },
       { status: 500 }
@@ -79,24 +118,30 @@ export async function PUT(request, { params }) {
 
 export async function POST(request, { params }) {
   try {
+    if (!dbAdmin) {
+      return NextResponse.json(
+        { error: "Database connection failed" },
+        { status: 500 }
+      );
+    }
+
     const { id, section } = params;
     const { data } = await request.json();
 
-    const websiteDoc = doc(dbAdmin, "websites", id);
-    const websiteSnapshot = await getDoc(websiteDoc);
+    const websiteDoc = dbAdmin.collection("websites").doc(id);
+    const websiteSnapshot = await websiteDoc.get();
 
-    if (!websiteSnapshot.exists()) {
+    if (!websiteSnapshot.exists) {
       return NextResponse.json({ error: "Website not found" }, { status: 404 });
     }
 
-    // Add new section using dot notation within allData
-    const updatePath = `allData.${section}`;
+    // Add new section using dot notation
     const updateData = {
-      [updatePath]: data,
+      [section]: data,
       lastUpdated: new Date(),
     };
 
-    await updateDoc(websiteDoc, updateData);
+    await websiteDoc.update(updateData);
 
     return NextResponse.json({
       success: true,
@@ -114,23 +159,28 @@ export async function POST(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
+    if (!dbAdmin) {
+      return NextResponse.json(
+        { error: "Database connection failed" },
+        { status: 500 }
+      );
+    }
+
     const { id, section } = params;
 
-    const websiteDoc = doc(dbAdmin, "websites", id);
-    const websiteSnapshot = await getDoc(websiteDoc);
+    const websiteDoc = dbAdmin.collection("websites").doc(id);
+    const websiteSnapshot = await websiteDoc.get();
 
-    if (!websiteSnapshot.exists()) {
+    if (!websiteSnapshot.exists) {
       return NextResponse.json({ error: "Website not found" }, { status: 404 });
     }
 
     const websiteData = websiteSnapshot.data();
     const sectionPath = section.split(".");
 
-    // Create a deep copy of allData and remove the section
-    const updatedAllData = JSON.parse(
-      JSON.stringify(websiteData.allData || {})
-    );
-    let current = updatedAllData;
+    // Create a deep copy of data and remove the section
+    const updatedData = JSON.parse(JSON.stringify(websiteData || {}));
+    let current = updatedData;
 
     // Navigate to parent
     for (let i = 0; i < sectionPath.length - 1; i++) {
@@ -152,10 +202,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: "Section not found" }, { status: 404 });
     }
 
-    await updateDoc(websiteDoc, {
-      allData: updatedAllData,
-      lastUpdated: new Date(),
-    });
+    await websiteDoc.update(updatedData);
 
     return NextResponse.json({
       success: true,
