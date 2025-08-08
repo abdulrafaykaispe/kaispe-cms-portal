@@ -92,6 +92,34 @@ export default function WebsiteDetailContent() {
     }));
   };
 
+  const handleArrayItemChange = (arrayKey, itemIndex, itemKey, value) => {
+    setEditingData((prev) => {
+      const newArray = [...(prev[arrayKey] || [])];
+      if (typeof newArray[itemIndex] === 'object' && newArray[itemIndex] !== null) {
+        newArray[itemIndex] = {
+          ...newArray[itemIndex],
+          [itemKey]: value,
+        };
+      } else {
+        newArray[itemIndex] = value;
+      }
+      return {
+        ...prev,
+        [arrayKey]: newArray,
+      };
+    });
+  };
+
+  const handleNestedObjectChange = (parentKey, childKey, value) => {
+    setEditingData((prev) => ({
+      ...prev,
+      [parentKey]: {
+        ...(prev[parentKey] || {}),
+        [childKey]: value,
+      },
+    }));
+  };
+
   const togglePageExpansion = (pageName) => {
     setExpandedPages((prev) => ({
       ...prev,
@@ -99,7 +127,7 @@ export default function WebsiteDetailContent() {
     }));
   };
 
-  const renderEditableField = (key, value, depth = 0) => {
+  const renderEditableField = (key, value, depth = 0, parentKey = null, arrayIndex = null) => {
     const isEditing = editingSection && depth === 0;
 
     if (typeof value === "object" && value !== null && !Array.isArray(value)) {
@@ -114,7 +142,7 @@ export default function WebsiteDetailContent() {
               <label className="block text-sm font-medium text-gray-700 mb-1 capitalize">
                 {subKey.replace(/([A-Z])/g, " $1").trim()}
               </label>
-              {renderEditableField(subKey, subValue, depth + 1)}
+              {renderEditableField(subKey, subValue, depth + 1, key, arrayIndex)}
             </div>
           ))}
         </div>
@@ -125,22 +153,82 @@ export default function WebsiteDetailContent() {
       return (
         <div className="space-y-2">
           {value.map((item, index) => (
-            <div key={index} className="flex items-center space-x-2">
-              <input
-                type="text"
-                value={typeof item === "string" ? item : JSON.stringify(item)}
-                onChange={(e) => {
-                  if (isEditing) {
-                    const newArray = [...value];
-                    newArray[index] = e.target.value;
-                    handleInputChange(key, newArray);
-                  }
-                }}
-                disabled={!isEditing}
-                className={`flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  !isEditing ? "bg-gray-50 cursor-not-allowed" : ""
-                }`}
-              />
+            <div key={index} className="border border-gray-200 rounded-lg p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-600">Item {index + 1}</span>
+              </div>
+              {typeof item === "string" ? (
+                <input
+                  type="text"
+                  value={item}
+                  onChange={(e) => {
+                    if (isEditing) {
+                      const newArray = [...value];
+                      newArray[index] = e.target.value;
+                      handleInputChange(key, newArray);
+                    }
+                  }}
+                  disabled={!isEditing}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    !isEditing ? "bg-gray-50 cursor-not-allowed" : ""
+                  }`}
+                />
+              ) : (
+                <div className="space-y-2">
+                  {Object.entries(item).map(([itemKey, itemValue]) => (
+                    <div key={itemKey}>
+                      <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
+                        {itemKey.replace(/([A-Z])/g, " $1").trim()}
+                      </label>
+                      {typeof itemValue === "string" ? (
+                        itemValue.length > 100 ? (
+                          <textarea
+                            value={itemValue}
+                            onChange={(e) => {
+                              if (isEditing) {
+                                handleArrayItemChange(key, index, itemKey, e.target.value);
+                              }
+                            }}
+                            disabled={!isEditing}
+                            rows={3}
+                            className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical ${
+                              !isEditing ? "bg-gray-50 cursor-not-allowed" : ""
+                            }`}
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            value={itemValue}
+                            onChange={(e) => {
+                              if (isEditing) {
+                                handleArrayItemChange(key, index, itemKey, e.target.value);
+                              }
+                            }}
+                            disabled={!isEditing}
+                            className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                              !isEditing ? "bg-gray-50 cursor-not-allowed" : ""
+                            }`}
+                          />
+                        )
+                      ) : (
+                        <input
+                          type="text"
+                          value={itemValue || ""}
+                          onChange={(e) => {
+                            if (isEditing) {
+                              handleArrayItemChange(key, index, itemKey, e.target.value);
+                            }
+                          }}
+                          disabled={!isEditing}
+                          className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                            !isEditing ? "bg-gray-50 cursor-not-allowed" : ""
+                          }`}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -154,11 +242,23 @@ export default function WebsiteDetailContent() {
         key.toLowerCase().includes("content") ||
         value.length > 100);
 
+    const handleChange = (e) => {
+      if (!isEditing) return;
+      
+      if (parentKey && arrayIndex !== null) {
+        handleArrayItemChange(parentKey, arrayIndex, key, e.target.value);
+      } else if (depth > 0 && parentKey) {
+        handleNestedObjectChange(parentKey, key, e.target.value);
+      } else {
+        handleInputChange(key, e.target.value);
+      }
+    };
+
     if (isTextArea) {
       return (
         <textarea
           value={value || ""}
-          onChange={(e) => isEditing && handleInputChange(key, e.target.value)}
+          onChange={handleChange}
           disabled={!isEditing}
           rows={4}
           className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical ${
@@ -172,7 +272,7 @@ export default function WebsiteDetailContent() {
       <input
         type="text"
         value={value || ""}
-        onChange={(e) => isEditing && handleInputChange(key, e.target.value)}
+        onChange={handleChange}
         disabled={!isEditing}
         className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
           !isEditing ? "bg-gray-50 cursor-not-allowed" : ""
