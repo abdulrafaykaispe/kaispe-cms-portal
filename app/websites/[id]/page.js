@@ -177,7 +177,7 @@ export default function WebsiteDetailContent() {
                 <div className="space-y-2">
                   {Object.entries(item).map(([itemKey, itemValue]) => (
                     <div key={itemKey}>
-                      <label className="block text-xs font-medium text-gray-600 mb-1 capitalize">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 capitalize bg-gray-50 px-2 py-1 rounded border-l-2 border-blue-400">
                         {itemKey.replace(/([A-Z])/g, " $1").trim()}
                       </label>
                       {typeof itemValue === "string" ? (
