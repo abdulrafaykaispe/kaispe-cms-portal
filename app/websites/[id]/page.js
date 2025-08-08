@@ -123,37 +123,6 @@ export default function WebsiteDetailContent() {
     }));
   };
 
-  const handleArrayItemChange = (arrayKey, itemIndex, itemKey, value) => {
-    setEditingData((prev) => {
-      const newArray = [...(prev[arrayKey] || [])];
-      if (
-        typeof newArray[itemIndex] === "object" &&
-        newArray[itemIndex] !== null
-      ) {
-        newArray[itemIndex] = {
-          ...newArray[itemIndex],
-          [itemKey]: value,
-        };
-      } else {
-        newArray[itemIndex] = value;
-      }
-      return {
-        ...prev,
-        [arrayKey]: newArray,
-      };
-    });
-  };
-
-  const handleNestedObjectChange = (parentKey, childKey, value) => {
-    setEditingData((prev) => ({
-      ...prev,
-      [parentKey]: {
-        ...(prev[parentKey] || {}),
-        [childKey]: value,
-      },
-    }));
-  };
-
   const togglePageExpansion = (pageName) => {
     setExpandedPages((prev) => ({
       ...prev,
